@@ -1,19 +1,19 @@
 package edu.iis.mto.testreactor.atm;
 
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.*;
 
+import edu.iis.mto.testreactor.atm.bank.AuthorizationToken;
 import edu.iis.mto.testreactor.atm.bank.AccountException;
 import edu.iis.mto.testreactor.atm.bank.AuthorizationException;
 import edu.iis.mto.testreactor.atm.bank.Bank;
-import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -25,7 +25,7 @@ import java.util.List;
 class ATMachineTest {
     @Mock
     Bank bank;
-
+    
     Card card;
     PinCode pin;
     ATMachine atm;
@@ -125,4 +125,28 @@ class ATMachineTest {
         assertEquals(errCode.getErrorCode(), ErrorCode.NO_FUNDS_ON_ACCOUNT);
     }
 
+    @Test
+    void failedWithdrawalBecauseOfLowAmount() {
+        BanknotesPack hundreds = BanknotesPack.create(100, Banknote.PL_500);
+        banknotes.add(hundreds);
+        MoneyDeposit deposit = MoneyDeposit.of(atm.getCurrentDeposit().getCurrency(), banknotes);
+        atm.setDeposit(deposit);
+
+        ATMOperationException errCode = assertThrows(ATMOperationException.class, () -> atm.withdraw(pin, card, new Money(0.1)));
+        assertEquals(errCode.getErrorCode(), ErrorCode.WRONG_AMOUNT);
+    }
+
+    @Test
+    void orderOfCallCheck() throws ATMOperationException, AuthorizationException, AccountException {
+        banknotes = List.of(BanknotesPack.create(10, Banknote.PL_50));
+        atm.setDeposit(MoneyDeposit.of(atm.getCurrentDeposit().getCurrency(), banknotes));
+        AuthorizationToken dummyToken = AuthorizationToken.create("mocky token");
+        Money withdrawMoney = new Money(50);
+        when(bank.autorize(pin.getPIN(), card.getNumber())).thenReturn(dummyToken);
+        atm.withdraw(pin, card, withdrawMoney);
+
+        InOrder callOrder = inOrder(bank);
+        callOrder.verify(bank).autorize(pin.getPIN(), card.getNumber());
+        callOrder.verify(bank).charge(dummyToken, withdrawMoney);
+    }
 }
