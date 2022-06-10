@@ -18,9 +18,13 @@ public class ATMachine {
 
     private MoneyDeposit deposit;
 
-    public ATMachine(Bank bank, Currency currency) {
+    public static ATMachine of(Bank bank, Currency currency) {
+        return new ATMachine(bank, currency);
+    }
+
+    private ATMachine(Bank bank, Currency currency) {
         this.bank = requireNonNull(bank);
-        this.deposit = MoneyDeposit.create(requireNonNull(currency), List.of());
+        this.deposit = MoneyDeposit.of(requireNonNull(currency), List.of());
     }
 
     public void setDeposit(MoneyDeposit deposit) {
@@ -28,7 +32,7 @@ public class ATMachine {
     }
 
     public MoneyDeposit getCurrentDeposit() {
-        return MoneyDeposit.create(deposit.getCurrency(), deposit.getBanknotes());
+        return MoneyDeposit.of(deposit);
     }
 
     public Withdrawal withdraw(PinCode pin, Card card, Money amount) throws ATMOperationException {

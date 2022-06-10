@@ -2,6 +2,7 @@ package edu.iis.mto.testreactor.atm;
 
 import static java.util.Objects.requireNonNull;
 
+import java.util.ArrayList;
 import java.util.Currency;
 import java.util.List;
 import java.util.Map;
@@ -14,8 +15,12 @@ public class MoneyDeposit {
     private final String currencyCode;
     private final Map<Banknote, BanknotesPack> deposit;
 
-    public static MoneyDeposit create(Currency currency, List<BanknotesPack> deposit) {
+    public static MoneyDeposit of(Currency currency, List<BanknotesPack> deposit) {
         return new MoneyDeposit(requireNonNull(currency.getCurrencyCode()), requireNonNull(deposit));
+    }
+
+    public static MoneyDeposit of(MoneyDeposit other) {
+        return of(other.getCurrency(), new ArrayList<>(other.getBanknotes()));
     }
 
     private MoneyDeposit(String currency, List<BanknotesPack> deposit) {
@@ -37,7 +42,7 @@ public class MoneyDeposit {
         return isAvailable(banknotes.getDenomination(), banknotes.getCount());
     }
 
-    public int getAvailableCountOf(Banknote banknote) {
+    int getAvailableCountOf(Banknote banknote) {
         return getFor(banknote).getCount();
     }
 
@@ -45,7 +50,8 @@ public class MoneyDeposit {
         return deposit.getOrDefault(note, BanknotesPack.create(0, note));
     }
 
-    public void release(BanknotesPack banknotesPack) {
+    // this method has package scope because only ATM can release money from deposit
+    void release(BanknotesPack banknotesPack) {
         Banknote denomination = banknotesPack.getDenomination();
         BanknotesPack existing = getFor(denomination);
         int newCount = existing.getCount() - banknotesPack.getCount();
